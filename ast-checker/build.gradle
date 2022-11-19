@@ -1,0 +1,16 @@
+plugins {
+    id 'groovy'
+    id 'java-library'
+}
+
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
+
+dependencies {
+    compileOnly libs.groovy
+    api libs.groovycps
+
+    testImplementation libs.bundles.spockJenkins
+}
+
+configurations.testImplementation.extendsFrom configurations.compileOnly

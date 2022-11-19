@@ -1,0 +1,5 @@
+rootProject.name = 'groovy-cps-utils'
+include 'ast-checker'
+include 'groovy-shared-library-plugin'
+include 'groovy-cps-plugin'
+

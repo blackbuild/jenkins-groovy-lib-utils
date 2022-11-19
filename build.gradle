@@ -1,0 +1,21 @@
+plugins {
+    id "com.github.hierynomus.license" version "0.16.1"
+}
+
+group 'com.blackbuild.groovycps'
+
+allprojects {
+    apply plugin: 'com.github.hierynomus.license'
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://repo.jenkins-ci.org/releases/"
+        }
+    }
+    license {
+        header = rootProject.file("LICENSE")
+        mapping("java", "SLASHSTAR_STYLE")
+        mapping("groovy", "SLASHSTAR_STYLE")
+        strictCheck(true)
+    }
+}

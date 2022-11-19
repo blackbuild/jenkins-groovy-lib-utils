@@ -1,0 +1,17 @@
+[versions]
+groovy = "2.4.21"
+groovy-cps = "1.32"
+spock = "2.3-groovy-3.0"
+spockJenkins = "1.3-groovy-2.4"
+
+[libraries]
+groovy = { module = "org.codehaus.groovy:groovy-all", version.ref = "groovy" }
+groovycps = { module = "com.cloudbees:groovy-cps", version.ref = "groovy-cps" }
+spock = { module = "org.spockframework:spock-core", version.ref = "spock" }
+spockJenkins = { module = "org.spockframework:spock-core", version.ref = "spockJenkins" }
+bytebuddy = "net.bytebuddy:byte-buddy:1.12.17"
+objenesis = "org.objenesis:objenesis:3.3"
+
+[bundles]
+spock = ["spock", "bytebuddy", "objenesis"]
+spockJenkins = ["spockJenkins", "bytebuddy", "objenesis"]

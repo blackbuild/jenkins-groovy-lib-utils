@@ -1,0 +1,31 @@
+plugins {
+    id 'java-gradle-plugin'
+    id 'groovy'
+}
+
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
+
+gradlePlugin {
+    plugins {
+        groovyCpsPlugin {
+            id = 'com.blackbuild.jenkins.groovy-cps'
+            implementationClass = 'com.blackbuild.groovycps.plugin.GroovyCpsPlugin'
+        }
+    }
+}
+
+dependencies {
+    implementation project(":ast-checker")
+    testImplementation(libs.bundles.spock) {
+        exclude group: 'org.codehaus.groovy'
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+license {
+    exclude("**/.groovyCompile.groovy")
+}
