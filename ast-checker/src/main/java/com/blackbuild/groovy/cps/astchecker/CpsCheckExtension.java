@@ -40,7 +40,7 @@ import static org.codehaus.groovy.runtime.DefaultGroovyMethods.asType;
  * from within a NonCPS annotated method
  */
 public class CpsCheckExtension extends AbstractTypeCheckingExtension {
-    public CpsCheckExtension(CpsCheckVisitor typeCheckingVisitor) {
+    CpsCheckExtension(CpsCheckVisitor typeCheckingVisitor) {
         super(typeCheckingVisitor);
         this.cpsCheckVisitor = typeCheckingVisitor;
     }
@@ -66,7 +66,7 @@ public class CpsCheckExtension extends AbstractTypeCheckingExtension {
         return !method.getAnnotations(WORKFLOW_TRANSFORMED_ANNOTATION).isEmpty();
     }
 
-    public static final ClassNode NON_CPS_ANNOTATION_TYPE = ClassHelper.make(NonCPS.class);
-    public static final ClassNode WORKFLOW_TRANSFORMED_ANNOTATION = ClassHelper.make(WorkflowTransformed.class);
+    static final ClassNode NON_CPS_ANNOTATION_TYPE = ClassHelper.make(NonCPS.class);
+    static final ClassNode WORKFLOW_TRANSFORMED_ANNOTATION = ClassHelper.make(WorkflowTransformed.class);
     private final CpsCheckVisitor cpsCheckVisitor;
 }

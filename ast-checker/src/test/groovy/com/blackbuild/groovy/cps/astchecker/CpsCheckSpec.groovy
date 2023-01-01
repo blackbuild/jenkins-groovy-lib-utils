@@ -110,6 +110,18 @@ def outer() {
         notThrown(MultipleCompilationErrorsException)
     }
 
+    def "calling NonCPS-Getter via property style from external tyoe is legal"() {
+        when:
+        createClass '''
+@NonCPS
+def outer() {
+    return "bla".bytes
+}
+'''
+        then:
+        notThrown(MultipleCompilationErrorsException)
+    }
+
     def "Methods overriding NonCps methods must also be NonCps"() {
         when:
         createClass '''

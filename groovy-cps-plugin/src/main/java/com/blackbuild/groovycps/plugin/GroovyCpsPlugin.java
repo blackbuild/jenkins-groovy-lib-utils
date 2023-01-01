@@ -39,9 +39,13 @@ import java.io.File;
 import java.net.URL;
 import java.security.CodeSource;
 
+/**
+ * Plugin that prepares a project for CPS usage. Applies the "groovy" plugin
+ * and prepares main compilation to apply GroovyCPS to all classes.
+ */
 public class GroovyCpsPlugin implements Plugin<Project> {
 
-    public static final String GROOVY_CONFIGURATION = "groovy";
+    private static final String GROOVY_CONFIGURATION = "groovy";
     private Project project;
 
     @Override

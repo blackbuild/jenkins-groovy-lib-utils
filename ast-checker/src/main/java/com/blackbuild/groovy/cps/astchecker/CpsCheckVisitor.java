@@ -45,6 +45,11 @@ import static org.codehaus.groovy.runtime.DefaultGroovyMethods.asType;
  * </ul>
  */
 public class CpsCheckVisitor extends StaticTypeCheckingVisitor {
+    /**
+     * Create a new Visitor instance
+     * @param source The source unit
+     * @param cn the classnode to visit
+     */
     public CpsCheckVisitor(SourceUnit source, ClassNode cn) {
         super(source, cn);
         addTypeCheckingExtension(new CpsCheckExtension(this));
@@ -68,7 +73,7 @@ public class CpsCheckVisitor extends StaticTypeCheckingVisitor {
         // ignore, we only use static type to determine the call targets
     }
 
-    public void addCPSTypeError(String message, ASTNode astNode) {
+    protected void addCPSTypeError(String message, ASTNode astNode) {
         super.addStaticTypeError(message, astNode);
     }
 
@@ -98,7 +103,7 @@ public class CpsCheckVisitor extends StaticTypeCheckingVisitor {
         return !node.getAnnotations(CpsCheckExtension.NON_CPS_ANNOTATION_TYPE).isEmpty();
     }
 
-    public static class FailIfGetterIsCPSMethodVisitor extends ClassCodeVisitorSupport {
+    static class FailIfGetterIsCPSMethodVisitor extends ClassCodeVisitorSupport {
         private final CpsCheckVisitor outer;
 
         public FailIfGetterIsCPSMethodVisitor(CpsCheckVisitor outer) {
@@ -112,6 +117,9 @@ public class CpsCheckVisitor extends StaticTypeCheckingVisitor {
 
         @Override
         public void visitMethod(MethodNode node) {
+            if (node.getAnnotations(CpsCheckExtension.WORKFLOW_TRANSFORMED_ANNOTATION).isEmpty())
+                return;
+
             if (isNonCps(node)) return;
             outer.addCPSTypeError(String.format(
                     "Illegal call from NonCPS method %s to CPS getter %s::%s",
