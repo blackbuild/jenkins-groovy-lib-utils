@@ -21,29 +21,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.groovycps.plugin
+package com.blackbuild.groovycps.jenkins
 
-import com.blackbuild.groovycps.tests.GradleIntegrationTest
+import spock.lang.Specification
 
-class GroovyCpsPluginTest extends GradleIntegrationTest {
+class MappingUtilTest extends Specification {
 
-    String pluginIdToTest = "com.blackbuild.jenkins.groovy-cps"
-
-    def "groovy classpath is applied and configuration script is set"() {
+    def "normal properties are read"() {
         given:
-        withVerifyTask """
-            def compileTask = project.tasks.compileGroovy
-            assert compileTask != null
-            assert compileTask.groovyOptions.configurationScript.text.contains('addStarImports("com.cloudbees.groovy.cps", "hudson.model", "jenkins.model"))')
-        """
-
+        // language=Properties
+        def content = '''
+bla=blub
+bli=bleu
+'''
         when:
-        runVerifyTask()
+        def result = MappingUtil.loadProperties(new StringReader(content), Map.Entry::getKey, Map.Entry::getValue)
 
         then:
-        noExceptionThrown()
+        result == [bla: 'blub', bli: 'bleu']
     }
 
+    def "properties are read with converter"() {
+        given:
+        // language=Properties
+        def content = '''
+bla=blub
+bli=bleu
+'''
+        def map = [bla: 'bla:123', bli: 'blibli:blu']
 
+        when:
+        def result = MappingUtil.loadProperties(new StringReader(content), MappingUtil.mapToProperties(Map.Entry::getKey, map), Map.Entry::getValue)
+
+        then:
+        result == ['bla:123': 'blub', 'blibli:blu': 'bleu']
+    }
 
 }

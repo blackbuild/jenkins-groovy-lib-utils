@@ -9,6 +9,10 @@ gradlePlugin {
             id = 'com.blackbuild.jenkins.groovy-cps'
             implementationClass = 'com.blackbuild.groovycps.plugin.GroovyCpsPlugin'
         }
+        jenkinsShareLibPlugin {
+            id = 'com.blackbuild.jenkins.shared-lib'
+            implementationClass = 'com.blackbuild.groovycps.jenkins.SharedLibPlugin'
+        }
     }
 }
 
@@ -17,6 +21,7 @@ dependencies {
     testImplementation(libs.bundles.spock) {
         exclude group: 'org.codehaus.groovy'
     }
+    testImplementation "org.jetbrains:annotations:16.0.2"
 }
 
 test {

@@ -1,5 +1,27 @@
 rootProject.name = 'groovy-cps-utils'
 include 'ast-checker'
-include 'groovy-shared-library-plugin'
 include 'groovy-cps-plugin'
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        libs {
+            version('groovy', "2.4.21")
+            version('groovy-cps', "1.32")
+            version('spock', "2.3-groovy-3.0")
+            version('spockJenkins', "1.3-groovy-2.4")
+
+            library('groovy', "org.codehaus.groovy", "groovy-all").versionRef("groovy")
+            library('groovycps', "com.cloudbees", "groovy-cps").versionRef("groovy-cps")
+            library('spock', "org.spockframework", "spock-core").versionRef("spock")
+            library('spockJenkins', "org.spockframework", "spock-core").versionRef("spockJenkins")
+
+            library('bytebuddy', "net.bytebuddy:byte-buddy:1.12.17")
+            library('objenesis', "org.objenesis:objenesis:3.3")
+
+
+            bundle('spock', ["spock", "bytebuddy", "objenesis"])
+            bundle('spockJenkins', ["spockJenkins", "bytebuddy", "objenesis"])
+        }
+    }
+}
 

@@ -21,29 +21,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.groovycps.plugin
-
-import com.blackbuild.groovycps.tests.GradleIntegrationTest
-
-class GroovyCpsPluginTest extends GradleIntegrationTest {
-
-    String pluginIdToTest = "com.blackbuild.jenkins.groovy-cps"
-
-    def "groovy classpath is applied and configuration script is set"() {
-        given:
-        withVerifyTask """
-            def compileTask = project.tasks.compileGroovy
-            assert compileTask != null
-            assert compileTask.groovyOptions.configurationScript.text.contains('addStarImports("com.cloudbees.groovy.cps", "hudson.model", "jenkins.model"))')
-        """
-
-        when:
-        runVerifyTask()
-
-        then:
-        noExceptionThrown()
-    }
+package com.blackbuild.groovycps.plugin;
 
 
+import org.gradle.api.provider.Property;
 
+/**
+ * Extension for {@link GroovyCpsPlugin}.
+ */
+public abstract class GroovyCpsPluginExtension {
+
+    /**
+     * The version of the groovy cps build version to use.
+     */
+    protected abstract Property<String> getCpsVersion();
+
+    /**
+     * The version of groovy to use.
+     */
+    protected abstract Property<String> getGroovyVersion();
 }

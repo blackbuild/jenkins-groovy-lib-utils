@@ -24,14 +24,13 @@
 package com.blackbuild.groovycps.plugin;
 
 import com.blackbuild.groovy.cps.astchecker.AstChecker;
-import com.cloudbees.groovy.cps.NonCPS;
-import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.plugins.GroovyPlugin;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.resources.TextResource;
 import org.gradle.api.tasks.compile.GroovyCompile;
 
@@ -47,27 +46,42 @@ public class GroovyCpsPlugin implements Plugin<Project> {
 
     private static final String GROOVY_CONFIGURATION = "groovy";
     private Project project;
+    private GroovyCpsPluginExtension extension;
 
     @Override
     public void apply(Project project) {
         this.project = project;
         project.getPluginManager().apply(GroovyPlugin.class);
 
+        extension = project.getExtensions().create("cps", GroovyCpsPluginExtension.class);
+        extension.getCpsVersion().convention("1.32");
+        extension.getGroovyVersion().convention("2.4.21");
+
         createGroovyConfiguration();
         activateCps();
     }
 
     private void createGroovyConfiguration() {
-        Configuration groovy = project.getConfigurations().create(GROOVY_CONFIGURATION);
+        Configuration groovy = project.getConfigurations().create(GROOVY_CONFIGURATION, c -> {
+            c.setVisible(false);
+            c.setCanBeConsumed(false);
+            c.setCanBeResolved(true);
+            c.setDescription("Dependencies for the groovy compiler");
+        });
         project.getConfigurations().getByName("implementation").extendsFrom(groovy);
         addCpsDependenciesTo(groovy);
     }
 
     private void addCpsDependenciesTo(Configuration groovy) {
-        // TODO: Better include the actual Plugin dependencies
-        groovy.getDependencies().add(project.getDependencies().create(
-                project.files(getLocationForClass(AstChecker.class), getLocationForClass(NonCPS.class))
-        ));
+        groovy.defaultDependencies(d -> {
+            d.add(project.getDependencies().create(project.files(getLocationForClass(AstChecker.class))));
+            d.add(createDependency("org.codehaus.groovy:groovy-all", extension.getGroovyVersion()));
+            d.add(createDependency("com.cloudbees:groovy-cps", extension.getCpsVersion()));
+        });
+    }
+
+    private Dependency createDependency(String artifactAndGroup, Provider<String> version) {
+        return project.getDependencies().create(artifactAndGroup + ":" + version.get());
     }
 
     private static URL getLocationForClass(Class<?> type) {
@@ -79,7 +93,6 @@ public class GroovyCpsPlugin implements Plugin<Project> {
 
     private void activateCps() {
         GroovyCompile compileGroovy = (GroovyCompile) project.getTasks().getByName("compileGroovy");
-        // compileGroovy.doFirst(new SetClassPathAction());
         compileGroovy.setGroovyClasspath(project.getConfigurations().getByName(GROOVY_CONFIGURATION));
 
         File existingConfigScript = compileGroovy.getGroovyOptions().getConfigurationScript();
@@ -90,11 +103,5 @@ public class GroovyCpsPlugin implements Plugin<Project> {
         compileGroovy.getGroovyOptions().setConfigurationScript(scriptText.asFile());
     }
 
-    private static class SetClassPathAction implements Action<Task> {
-        @Override
-        public void execute(Task task) {
-            GroovyCompile groovyCompile = (GroovyCompile) task;
-            groovyCompile.setGroovyClasspath(task.getProject().getConfigurations().getByName(GROOVY_CONFIGURATION));
-        }
-    }
+
 }

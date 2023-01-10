@@ -21,29 +21,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.groovycps.plugin
+package com.blackbuild.groovycps.jenkins
 
-import com.blackbuild.groovycps.tests.GradleIntegrationTest
+import spock.lang.Specification
 
-class GroovyCpsPluginTest extends GradleIntegrationTest {
+class StripJsonpReaderTest extends Specification {
 
-    String pluginIdToTest = "com.blackbuild.jenkins.groovy-cps"
-
-    def "groovy classpath is applied and configuration script is set"() {
+    def "simple strip"() {
         given:
-        withVerifyTask """
-            def compileTask = project.tasks.compileGroovy
-            assert compileTask != null
-            assert compileTask.groovyOptions.configurationScript.text.contains('addStarImports("com.cloudbees.groovy.cps", "hudson.model", "jenkins.model"))')
-        """
+        String text = '''updateCenter.post(
+{"bla":"blub"}
+);'''
 
         when:
-        runVerifyTask()
+        def reader = new StripJsonpReader(new BufferedReader(new StringReader(text)))
+        def stripped = reader.text
 
         then:
-        noExceptionThrown()
+        stripped == '{"bla":"blub"}'
     }
-
 
 
 }
