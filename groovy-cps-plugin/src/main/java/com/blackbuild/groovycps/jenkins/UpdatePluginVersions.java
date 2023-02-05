@@ -24,50 +24,48 @@
 package com.blackbuild.groovycps.jenkins;
 
 import groovy.json.JsonSlurper;
+import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.api.tasks.WriteProperties;
+import org.gradle.internal.util.PropertiesUtils;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
-public abstract class UpdatePluginDataTask extends WriteProperties {
+public abstract class UpdatePluginVersions extends DefaultTask {
 
     @OutputFile
-    protected abstract RegularFileProperty getUpdateCenterFile();
-
-
-    @Input
-    protected abstract MapProperty getPluginGAVs();
+    protected abstract RegularFileProperty getPluginVersionsFile();
 
     @Input
-    protected abstract Property<URI> getUpdateCenterURL();
+    protected abstract Property<String> getInstalledPluginsUrl();
 
+    @SuppressWarnings("unchecked")
     @TaskAction
     public void readPluginMapping() throws IOException {
-        URL url = null;
+        URL url;
         try {
-            url = getUpdateCenterURL().get().toURL();
+            url = getProject().uri(getInstalledPluginsUrl().get()).toURL();
         } catch (MalformedURLException e) {
-            throw new GradleException("Could not create url to update center", e);
+            throw new GradleException("Could not create url to installed.json", e);
         }
-        Map<String, String> pluginMap;
-        try (InputStream in = url.openStream()) {
-            StripJsonpReader jsonpReader = new StripJsonpReader(new InputStreamReader(in));
-            Map<String, Object> parse = (Map<String, Object>) new JsonSlurper().parse(jsonpReader);
-            Map<String, Map<String, Object>> plugins = (Map<String, Map<String, Object>>) parse.get("plugins");
-            plugins.forEach((k, v) -> getPluginGAVs().put(k, v.get("gav").toString()));
-        }
-    }
+        Properties versions = new Properties();
+        try (InputStream in = new BufferedInputStream(url.openStream())) {
+            Map<String, Object> parse = (Map<String, Object>) new JsonSlurper().parse(in);
+            List<Map<String, Object>> plugins = (List<Map<String, Object>>) parse.get("plugins");
 
+            plugins.forEach(v -> versions.setProperty(v.get("shortName").toString(), v.get("version").toString()));
+        }
+        PropertiesUtils.store(versions, getPluginVersionsFile().getAsFile().get());
+    }
 }

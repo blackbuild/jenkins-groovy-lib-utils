@@ -54,9 +54,10 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 
+@SuppressWarnings("unused")
 public class SharedLibPlugin implements Plugin<Project> {
 
-    private Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private Project project;
     private SharedLibExtension extension;
@@ -65,7 +66,7 @@ public class SharedLibPlugin implements Plugin<Project> {
     private Map<String, String> pluginMapping;
 
     private Map<String, String> pluginVersions;
-    private Map<String, String> explicitPluginVersions = new HashMap<>();
+    private final Map<String, String> explicitPluginVersions = new HashMap<>();
 
     private static void configureConfiguration(Configuration c) {
         c.setVisible(false);
@@ -82,6 +83,23 @@ public class SharedLibPlugin implements Plugin<Project> {
         configureSourceSets();
         createJenkinsConfigurations();
         addJenkinsCoreDependency();
+
+        createHelperTasks();
+    }
+
+    private void createHelperTasks() {
+        project.getTasks().register("updatePluginMappings", UpdatePluginMappings.class, t -> {
+            t.setDescription("Updates the plugin mappings from the configured mapping URI");
+            t.setGroup("help");
+            t.getUpdateCenterUrl().set(extension.getUpdateCenterUrl());
+            t.getPluginMappingFile().set(extension.getPluginMappingFile());
+        });
+        project.getTasks().register("updatePluginVersions", UpdatePluginVersions.class, t -> {
+            t.setDescription("Updates the plugin versions from the configured mapping URI");
+            t.setGroup("help");
+            t.getInstalledPluginsUrl().set(extension.getInstalledPluginsUrl());
+            t.getPluginVersionsFile().set(extension.getPluginVersionsFile());
+        });
     }
 
     private void createJenkinsConfigurations() {
@@ -90,7 +108,6 @@ public class SharedLibPlugin implements Plugin<Project> {
         jenkinsPlugins.extendsFrom(jenkinsCore);
         jenkinsPlugins.withDependencies(this::resolvePlugins);
         jenkinsPlugins.resolutionStrategy(this::resolvePluginVersions);
-        // project.getConfigurations().getByName("implementation").extendsFrom(jenkinsPlugins);
         project.getConfigurations().getByName("implementation").withDependencies(this::addPluginJarsToConfiguration);
         project.getConfigurations().all(config -> config.exclude(singletonMap("group", "commons-discovery")));
     }
@@ -130,30 +147,46 @@ public class SharedLibPlugin implements Plugin<Project> {
         plugins.forEach(this::resolveSinglePlugin);
     }
 
-    private void addJarsOfJenkinsPlugins() {
-        jenkinsPlugins.getResolvedConfiguration();
-    }
-
     private void addPluginsByShortName(DependencySet plugins) {
         extension.getPlugins().get().forEach(identifier -> addSinglePluginByShortName(plugins, identifier));
     }
 
     private void addSinglePluginByShortName(DependencySet plugins, String identifier) {
         logger.debug("Adding plugin {}", identifier);
-        String[] elements = identifier.split(":", 2);
-        String ga = pluginMapping.get(elements[0]);
-        if (ga == null)
-            throw new GradleException(format("Plugin %s not found in plugin mapping.", elements[0]));
+        String[] elements = identifier.split(":", 3);
+
+        String ga;
+        String explicitVersion = null;
+        if (elements.length == 1) {
+            logger.debug("Single element, assuming short name");
+            ga = pluginMapping.get(elements[0]);
+            if (ga == null)
+                throw new GradleException(format("Plugin %s not found in plugin mapping.", elements[0]));
+        } else if (elements.length == 3) {
+            logger.debug("Three elements, assuming full GAV");
+            ga = String.format("%s:%s", elements[0], elements[1]);
+            explicitVersion = elements[2];
+        } else {
+            logger.debug("Two elements, checking for shortName:version");
+            ga = pluginMapping.get(elements[0]);
+            if (ga == null) {
+                logger.debug("no shortname found, assuming GA");
+                ga = identifier;
+            } else {
+                explicitVersion = elements[1];
+            }
+        }
+
         logger.debug("{} is resolved to {}", identifier, ga);
         plugins.add(project.getDependencies().create(ga));
 
-        if (elements.length == 2)
-            explicitPluginVersions.put(ga, elements[1]);
+        if (explicitVersion != null)
+            explicitPluginVersions.put(ga, explicitVersion);
     }
 
     private void loadPluginVersions() {
         if (pluginVersions != null)
-            throw new IllegalStateException("Tried to load PluginVersions twice");
+            return;
         try {
             pluginVersions = loadPropertiesFromFile(
                     extension.getPluginVersionsFile().getAsFile().get(),
@@ -163,20 +196,10 @@ public class SharedLibPlugin implements Plugin<Project> {
             throw new GradleException("Could not load plugin versions: " + extension.getPluginMappingFile().get(), e);
         }
     }
-/*
-    private void loadPluginVersionsLegcy() {
-        Map<String, Object> parse = (Map<String, Object>) new JsonSlurper().parse(extension.getPluginVersionsFile().getAsFile().get());
-        List<Map<String, Object>> plugins = (List<Map<String, Object>>) parse.get("plugins");
-        pluginVersions = plugins.stream().collect(toMap(m ->
-                pluginMapping.getProperty(m.get("shortName").toString()),
-                m -> m.get("version").toString()
-        ));
-    }
-*/
 
     private void loadPluginMappings() {
         if (pluginMapping != null)
-            throw new IllegalStateException("Tried to load PluginMappings twice");
+            return;
         try {
             pluginMapping = loadPropertiesFromFile(extension.getPluginMappingFile().getAsFile().get());
         } catch (IOException e) {
@@ -191,6 +214,7 @@ public class SharedLibPlugin implements Plugin<Project> {
         );
     }
 
+    @SuppressWarnings({"UnstableApiUsage", "DataFlowIssue"})
     private void configureSourceSets() {
         SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
         SourceSet main = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);

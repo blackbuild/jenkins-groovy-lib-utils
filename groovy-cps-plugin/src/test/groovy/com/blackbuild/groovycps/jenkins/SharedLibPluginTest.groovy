@@ -157,12 +157,70 @@ blueocean=1.27.0
         noExceptionThrown()
     }
 
-    def "plugins can be explicitly overridden."() {
+    def "plugin version can be explicitly overridden."() {
         given:
         withDefaultRepositories()
         withBuild """
 jenkins {
     plugin "blueocean:1.27.0"
+}
+"""
+        withVerifyTask '''
+        assert project.configurations.jenkinsPlugins.resolvedConfiguration.firstLevelModuleDependencies.find { 
+            it.moduleGroup == "io.jenkins.blueocean" && it.moduleName == "blueocean" && it.moduleVersion == "1.27.0" 
+        }
+'''
+
+        withPluginMapping '''
+blueocean=io.jenkins.blueocean:blueocean
+'''
+        withVersionMapping '''
+blueocean=1.26.0
+'''
+
+        when:
+        runTask("dependencies",  DO_VERIFY_TASK)
+        // runVerifyTask()
+
+        then:
+        noExceptionThrown()
+    }
+
+    def "plugin can be GA"() {
+        given:
+        withDefaultRepositories()
+        withBuild """
+jenkins {
+    plugin "io.jenkins.blueocean:blueocean"
+}
+"""
+        withVerifyTask '''
+        assert project.configurations.jenkinsPlugins.resolvedConfiguration.firstLevelModuleDependencies.find { 
+            it.moduleGroup == "io.jenkins.blueocean" && it.moduleName == "blueocean" && it.moduleVersion == "1.27.0" 
+        }
+'''
+
+        withPluginMapping '''
+blueocean=io.jenkins.blueocean:blueocean
+'''
+        withVersionMapping '''
+blueocean=1.27.0
+'''
+
+        when:
+        runTask("dependencies",  DO_VERIFY_TASK)
+        // runVerifyTask()
+
+        then:
+        noExceptionThrown()
+    }
+
+    def "plugin can be GAV"() {
+        given:
+        withDefaultRepositories()
+        withBuild """
+jenkins {
+    plugin "io.jenkins.blueocean:blueocean:1.27.0"
 }
 """
         withVerifyTask '''

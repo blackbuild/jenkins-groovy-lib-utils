@@ -29,17 +29,18 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 
+@SuppressWarnings("unused")
 public abstract class SharedLibExtension {
 
     public static final String DEFAULT_PLUGIN_VERSIONS = "plugins/versions.properties";
     public static final String DEFAULT_PLUGIN_MAPPINGS = "plugins/mapping.properties";
-    Project project;
+    public static final String DEFAULT_JENKINS_UPDATE_CENTER = "https://updates.jenkins.io/current/update-center.json";
 
-    public SharedLibExtension(Project project) {
-        this.project = project;
+    protected SharedLibExtension(Project project) {
         getJenkinsVersion().convention("2.375.1");
         getPluginVersionsFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_VERSIONS));
         getPluginMappingFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_MAPPINGS));
+        getUpdateCenterUrl().convention(DEFAULT_JENKINS_UPDATE_CENTER);
     }
 
     public abstract Property<String> getJenkinsVersion();
@@ -56,4 +57,8 @@ public abstract class SharedLibExtension {
 
     public abstract RegularFileProperty getPluginVersionsFile();
     public abstract RegularFileProperty getPluginMappingFile();
+
+    public abstract Property<String> getInstalledPluginsUrl();
+
+    public abstract Property<String> getUpdateCenterUrl();
 }
