@@ -1,6 +1,6 @@
-rootProject.name = 'groovy-cps-utils'
+rootProject.name = 'jenkins-groovy-lib-utils'
 include 'ast-checker'
-include 'groovy-cps-plugin'
+include 'jenkins-groovy-lib-plugin'
 
 dependencyResolutionManagement {
     versionCatalogs {
