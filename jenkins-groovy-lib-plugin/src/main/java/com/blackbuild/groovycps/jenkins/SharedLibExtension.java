@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2022 Stephan Pauxberger
+ * Copyright (c) 2015-2023 Stephan Pauxberger
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ public abstract class SharedLibExtension {
     public static final String DEFAULT_PLUGIN_MAPPINGS = "plugins/mapping.properties";
     public static final String DEFAULT_JENKINS_UPDATE_CENTER = "https://updates.jenkins.io/current/update-center.json";
 
-    protected SharedLibExtension(Project project) {
+    public SharedLibExtension(Project project) {
         getJenkinsVersion().convention("2.375.1");
         getPluginVersionsFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_VERSIONS));
         getPluginMappingFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_MAPPINGS));

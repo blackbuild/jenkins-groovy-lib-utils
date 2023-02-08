@@ -1,13 +1,65 @@
 plugins {
     id 'groovy'
     id 'java-library'
+    id 'jacoco'
+    id 'signing'
+    id 'com.github.hierynomus.license'
+    id 'maven-publish'
 }
+
+group rootProject.group
+description = "Static Type checker that performs basic CPS validation."
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://repo.jenkins-ci.org/releases/"
+    }
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+jacoco {
+    toolVersion = "0.8.2"
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from(components.java)
+            pom { pom ->
+                name = project.name
+                description = project.description
+                rootProject.configurePom(pom)
+            }
+        }
+    }
+}
+
+license {
+    header = rootProject.file("LICENSE")
+    mapping("java", "SLASHSTAR_STYLE")
+    mapping("groovy", "SLASHSTAR_STYLE")
+    strictCheck(true)
+}
+
 
 dependencies {
     compileOnly libs.groovy
     api libs.groovycps
 
     testImplementation libs.bundles.spockJenkins
+}
+
+signing {
+    required { gradle.taskGraph.hasTask("publish") || gradle.taskGraph.hasTask("publishToMavenLocal") }
+    sign publishing.publications.mavenJava
 }
 
 configurations.testImplementation.extendsFrom configurations.compileOnly

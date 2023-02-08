@@ -1,18 +1,20 @@
 plugins {
+    id 'com.gradle.plugin-publish'
     id 'java-gradle-plugin'
     id 'groovy'
+    id 'jacoco'
+    id 'signing'
+    id 'com.github.hierynomus.license'
+    id 'maven-publish'
 }
 
-gradlePlugin {
-    plugins {
-        groovyCpsPlugin {
-            id = 'com.blackbuild.jenkins.groovy-cps'
-            implementationClass = 'com.blackbuild.groovycps.plugin.GroovyCpsPlugin'
-        }
-        jenkinsShareLibPlugin {
-            id = 'com.blackbuild.jenkins.shared-lib'
-            implementationClass = 'com.blackbuild.groovycps.jenkins.SharedLibPlugin'
-        }
+group rootProject.group
+description = 'Plugins to aid in the unit test of Jenkins Groovy Libs'
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://repo.jenkins-ci.org/releases/"
     }
 }
 
@@ -28,6 +30,62 @@ test {
     useJUnitPlatform()
 }
 
+gradlePlugin {
+
+    plugins {
+        groovyCpsPlugin {
+            id = 'com.blackbuild.jenkins.groovy-cps'
+            displayName = 'groovy-cps-plugin'
+            description = 'A plugin that allows building groovy-cps transformed classes in Gradle.'
+            implementationClass = 'com.blackbuild.groovycps.plugin.GroovyCpsPlugin'
+        }
+        jenkinsShareLibPlugin {
+            id = 'com.blackbuild.jenkins.shared-lib'
+            displayName = 'jenkins-shared-lib-plugin'
+            description = 'Plugin to help running real unit test for Jenkins Groovy Libs (formally Shared Groovy Libs)'
+            implementationClass = 'com.blackbuild.groovycps.jenkins.SharedLibPlugin'
+        }
+    }
+}
+
+pluginBundle {
+    website = 'https://github.com/blackbuild/jenkins-groovy-lib-utils'
+    vcsUrl = 'https://github.com/blackbuild/jenkins-groovy-lib-utils.git'
+    description = project.description
+    tags = ['testing', 'groovy', 'cps', 'jenkins']
+}
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+jacoco {
+    toolVersion = "0.8.2"
+}
+
+publishing {
+    publications {
+        pluginMaven(MavenPublication) {
+            pom { pom ->
+                name = project.name
+                description = project.description
+                rootProject.configurePom(pom)
+            }
+        }
+    }
+    afterEvaluate {
+        publications.groovyCpsPluginPluginMarkerMaven.pom { pom ->
+            rootProject.configurePom(pom)
+        }
+        publications.jenkinsShareLibPluginPluginMarkerMaven.pom { pom ->
+            rootProject.configurePom(pom)
+        }
+    }
+}
+
 license {
+    header = rootProject.file("LICENSE")
+    mapping("java", "SLASHSTAR_STYLE")
+    mapping("groovy", "SLASHSTAR_STYLE")
+    strictCheck(true)
     exclude("**/.groovyCompile.groovy")
 }
