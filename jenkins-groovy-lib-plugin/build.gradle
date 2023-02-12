@@ -19,7 +19,6 @@ repositories {
 }
 
 dependencies {
-    implementation project(":ast-checker")
     testImplementation(libs.bundles.spock) {
         exclude group: 'org.codehaus.groovy'
     }
@@ -61,6 +60,21 @@ targetCompatibility = JavaVersion.VERSION_1_8
 jacoco {
     toolVersion = "0.8.2"
 }
+
+tasks.register('generateResources') {
+    ext {
+        propFile = file("$buildDir/generated/com.blackbuild.jenkins.groovy-cps.properties")
+    }
+    outputs.file propFile
+    doLast {
+        mkdir propFile.parentFile
+        propFile.text = "version=$project.version"
+    }
+}
+processResources {
+    from files(tasks.generateResources)
+}
+tasks.test.dependsOn(project(":ast-checker").tasks.publishToMavenLocal)
 
 publishing {
     publications {
