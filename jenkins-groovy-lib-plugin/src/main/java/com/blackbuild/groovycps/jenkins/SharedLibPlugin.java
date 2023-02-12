@@ -44,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -193,7 +194,8 @@ public class SharedLibPlugin implements Plugin<Project> {
                     mapToProperties(Map.Entry::getKey, pluginMapping),
                     Map.Entry::getValue);
         } catch (IOException e) {
-            throw new GradleException("Could not load plugin versions: " + extension.getPluginMappingFile().get(), e);
+            logger.warn("Could not load plugin versions, explicit versions needed.");
+            pluginVersions = Collections.emptyMap();
         }
     }
 
@@ -203,7 +205,8 @@ public class SharedLibPlugin implements Plugin<Project> {
         try {
             pluginMapping = loadPropertiesFromFile(extension.getPluginMappingFile().getAsFile().get());
         } catch (IOException e) {
-            throw new GradleException("Could not load plugin mappings: " + extension.getPluginMappingFile().get(), e);
+            logger.warn("Could not load plugin mappings, plugin shortnames not supported.");
+            pluginMapping = Collections.emptyMap();
         }
     }
 
