@@ -23,6 +23,7 @@
  */
 package com.blackbuild.groovycps.jenkins;
 
+import com.blackbuild.groovycps.helpers.PluginHelper;
 import com.blackbuild.groovycps.plugin.GroovyCpsPlugin;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
@@ -48,8 +49,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.blackbuild.groovycps.jenkins.MappingUtil.loadPropertiesFromFile;
-import static com.blackbuild.groovycps.jenkins.MappingUtil.mapToProperties;
+import static com.blackbuild.groovycps.helpers.MappingUtil.loadPropertiesFromFile;
+import static com.blackbuild.groovycps.helpers.MappingUtil.mapToProperties;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -58,6 +59,7 @@ import static java.util.Collections.singletonMap;
 @SuppressWarnings("unused")
 public class SharedLibPlugin implements Plugin<Project> {
 
+    public static final String DEFAULT_JENKINS_REPO = "https://repo.jenkins-ci.org/public/";
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private Project project;
@@ -81,11 +83,25 @@ public class SharedLibPlugin implements Plugin<Project> {
         project.getPluginManager().apply(GroovyCpsPlugin.class);
         extension = project.getExtensions().create("jenkins", SharedLibExtension.class, project);
 
+        addJenkinsRepository();
+        addTestBase();
         configureSourceSets();
         createJenkinsConfigurations();
         addJenkinsCoreDependency();
 
         createHelperTasks();
+    }
+
+    private void addTestBase() {
+        if (extension.getAddTestBaseDependency().get())
+            project.getDependencies().add(
+                    "testImplementation",
+                    project.getDependencies().create("com.blackbuild.groovycps:jenkins-test-base:" + PluginHelper.getOwnVersion()));
+    }
+
+    private void addJenkinsRepository() {
+        if (extension.getAddJenkinsRepository().get())
+            project.getRepositories().maven(m -> m.setUrl(DEFAULT_JENKINS_REPO));
     }
 
     private void createHelperTasks() {

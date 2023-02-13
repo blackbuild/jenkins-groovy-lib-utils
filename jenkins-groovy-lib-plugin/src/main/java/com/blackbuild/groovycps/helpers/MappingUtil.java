@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.groovycps.jenkins;
+package com.blackbuild.groovycps.helpers;
 
 import java.io.File;
 import java.io.FileReader;
@@ -41,17 +41,17 @@ public class MappingUtil {
 
     private MappingUtil() {}
 
-    static Map<String, String> loadPropertiesFromFile(File file) throws IOException {
+    public static Map<String, String> loadPropertiesFromFile(File file) throws IOException {
         return loadPropertiesFromFile(file, Map.Entry::getKey, Map.Entry::getValue);
     }
 
-    static Map<String, String> loadPropertiesFromFile(File file, Function<Map.Entry<Object, Object>, Object> keyMapper, Function<Map.Entry<Object, Object>, Object> valueMapper) throws IOException {
+    public static Map<String, String> loadPropertiesFromFile(File file, Function<Map.Entry<Object, Object>, Object> keyMapper, Function<Map.Entry<Object, Object>, Object> valueMapper) throws IOException {
         try (FileReader reader = new FileReader(file)) {
             return loadProperties(reader, keyMapper, valueMapper);
         }
     }
 
-    static Map<String, String> loadProperties(Reader reader, Function<Map.Entry<Object, Object>, Object> keyMapper, Function<Map.Entry<Object, Object>, Object> valueMapper) throws IOException {
+    public static Map<String, String> loadProperties(Reader reader, Function<Map.Entry<Object, Object>, Object> keyMapper, Function<Map.Entry<Object, Object>, Object> valueMapper) throws IOException {
         Properties properties = new Properties();
         properties.load(reader);
         return properties.entrySet().stream().collect(
@@ -61,7 +61,8 @@ public class MappingUtil {
                 ));
     }
 
-    static Function<Map.Entry<Object, Object>, Object> mapToProperties(Function<Map.Entry<Object, Object>, Object> mapper, Map<String, String> map) {
+    public static Function<Map.Entry<Object, Object>, Object> mapToProperties(Function<Map.Entry<Object, Object>, Object> mapper, Map<String, String> map) {
+        //noinspection SuspiciousMethodCalls
         return mapper.andThen(map::get);
     }
 }

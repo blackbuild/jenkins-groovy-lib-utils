@@ -23,6 +23,7 @@
  */
 package com.blackbuild.groovycps.plugin;
 
+import com.blackbuild.groovycps.helpers.PluginHelper;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -35,9 +36,6 @@ import org.gradle.api.resources.TextResource;
 import org.gradle.api.tasks.compile.GroovyCompile;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
 
 /**
  * Plugin that prepares a project for CPS usage. Applies the "groovy" plugin
@@ -75,20 +73,10 @@ public class GroovyCpsPlugin implements Plugin<Project> {
 
     private void addCpsDependenciesTo(Configuration groovy) {
         groovy.defaultDependencies(d -> {
-            d.add(createDependency("com.blackbuild.groovycps:ast-checker", new DefaultProvider<>(this::getOwnVersion)));
+            d.add(createDependency("com.blackbuild.groovycps:ast-checker", new DefaultProvider<>(PluginHelper::getOwnVersion)));
             d.add(createDependency("org.codehaus.groovy:groovy-all", extension.getGroovyVersion()));
             d.add(createDependency("com.cloudbees:groovy-cps", extension.getCpsVersion()));
         });
-    }
-
-    private String getOwnVersion() {
-        Properties props = new Properties();
-        try (InputStream is = getClass().getClassLoader().getResourceAsStream("com.blackbuild.jenkins.groovy-cps.properties")) {
-            props.load(is);
-        } catch (IOException e) {
-            throw new GradleException("Could not determine version of groovy cps plugin.",e);
-        }
-        return props.getProperty("version");
     }
 
     private Dependency createDependency(String artifactAndGroup, Provider<String> version) {
@@ -103,7 +91,7 @@ public class GroovyCpsPlugin implements Plugin<Project> {
         if (existingConfigScript != null)
             throw new GradleException("Groovy-CPS-Plugin does not support existing configuration scripts yet.");
 
-        TextResource scriptText = project.getResources().getText().fromUri(this.getClass().getResource(".groovyCompile.groovy"));
+        @SuppressWarnings("DataFlowIssue") TextResource scriptText = project.getResources().getText().fromUri(this.getClass().getResource(".groovyCompile.groovy"));
         compileGroovy.getGroovyOptions().setConfigurationScript(scriptText.asFile());
     }
 

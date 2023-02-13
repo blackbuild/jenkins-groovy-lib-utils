@@ -29,17 +29,14 @@ jenkins {
     plugin "org.jenkins-ci.plugins:http_request" //
     plugin 'pipeline-milestone-step'
 }
-
-repositories {
-    maven {
-        url "https://repo.jenkins-ci.org/public/"
-    }
-}
-
-dependencies {
-    testImplementation "com.blackbuild.groovycps:jenkins-test-base:0.1.0-rc.1"
-}
 ```
+
+Note that by default, the plugin automatically adds the Jenkins public Maven repository as well as a dependency on the test-base module. This should be sufficient for most use cases.
+
+If you use a company repository manager, you might want to skip adding of the jenkins
+repository by setting `doNotAddJenkinsRepository()` in the `jenkins` extension.
+
+
 ## Plugin Mappings
 In order to correctly map the plugins, two files can be provided:
 

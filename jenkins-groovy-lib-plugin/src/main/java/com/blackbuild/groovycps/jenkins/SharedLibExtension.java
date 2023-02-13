@@ -41,6 +41,8 @@ public abstract class SharedLibExtension {
         getPluginVersionsFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_VERSIONS));
         getPluginMappingFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_MAPPINGS));
         getUpdateCenterUrl().convention(DEFAULT_JENKINS_UPDATE_CENTER);
+        getAddJenkinsRepository().convention(true);
+        getAddTestBaseDependency().convention(true);
     }
 
     public abstract Property<String> getJenkinsVersion();
@@ -61,4 +63,18 @@ public abstract class SharedLibExtension {
     public abstract Property<String> getInstalledPluginsUrl();
 
     public abstract Property<String> getUpdateCenterUrl();
+
+    public abstract Property<Boolean> getAddJenkinsRepository();
+
+    public abstract Property<Boolean> getAddTestBaseDependency();
+
+    public void doNotAddTestBaseDependency() {
+        getAddTestBaseDependency().set(false);
+    }
+
+    public void doNotAddJenkinsRepository() {
+        getAddJenkinsRepository().set(false);
+    }
+
+
 }

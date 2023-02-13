@@ -21,41 +21,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.blackbuild.groovycps.jenkins
+package com.blackbuild.groovycps.helpers;
 
-import com.blackbuild.groovycps.helpers.MappingUtil
-import spock.lang.Specification
+import org.gradle.api.GradleException;
 
-class MappingUtilTest extends Specification {
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 
-    def "normal properties are read"() {
-        given:
-        // language=Properties
-        def content = '''
-bla=blub
-bli=bleu
-'''
-        when:
-        def result = MappingUtil.loadProperties(new StringReader(content), Map.Entry::getKey, Map.Entry::getValue)
+public class PluginHelper {
 
-        then:
-        result == [bla: 'blub', bli: 'bleu']
+    private PluginHelper() {}
+
+    public static String getOwnVersion() {
+        Properties props = new Properties();
+        try (InputStream is = PluginHelper.class.getClassLoader().getResourceAsStream("com.blackbuild.jenkins.groovy-cps.properties")) {
+            props.load(is);
+        } catch (IOException e) {
+            throw new GradleException("Could not determine version of groovy cps plugin.",e);
+        }
+        return props.getProperty("version");
     }
-
-    def "properties are read with converter"() {
-        given:
-        // language=Properties
-        def content = '''
-bla=blub
-bli=bleu
-'''
-        def map = [bla: 'bla:123', bli: 'blibli:blu']
-
-        when:
-        def result = MappingUtil.loadProperties(new StringReader(content), MappingUtil.mapToProperties(Map.Entry::getKey, map), Map.Entry::getValue)
-
-        then:
-        result == ['bla:123': 'blub', 'blibli:blu': 'bleu']
-    }
-
 }
