@@ -61,18 +61,13 @@ jacoco {
     toolVersion = "0.8.2"
 }
 
-tasks.register('generateResources') {
-    ext {
-        propFile = file("$buildDir/generated/com.blackbuild.jenkins.groovy-cps.properties")
-    }
-    outputs.file propFile
-    doLast {
-        mkdir propFile.parentFile
-        propFile.text = "version=$project.version"
-    }
+tasks.register('generatePluginVersionMarker', org.gradle.api.tasks.WriteProperties) {
+    outputFile = file("${buildDir}/com.blackbuild.jenkins.groovy-cps.properties")
+    comment = "current plugin version"
+    property("version", project.version)
 }
 processResources {
-    from files(tasks.generateResources)
+    from files(tasks.generatePluginVersionMarker)
 }
 tasks.test.dependsOn(project(":ast-checker").tasks.publishToMavenLocal)
 
