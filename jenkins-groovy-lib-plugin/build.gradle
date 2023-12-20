@@ -38,11 +38,17 @@ gradlePlugin {
             description = 'A plugin that allows building groovy-cps transformed classes in Gradle.'
             implementationClass = 'com.blackbuild.groovycps.plugin.GroovyCpsPlugin'
         }
-        jenkinsShareLibPlugin {
+        jenkinsDependenciesPlugin {
+            id = 'com.blackbuild.jenkins.dependencies'
+            displayName = 'jenkins-dependencies-plugin'
+            description = 'Plugin to conventiently build a classpath for an existing jenkins installation'
+            implementationClass = 'com.blackbuild.groovycps.jenkins.JenkinsDependenciesPlugin'
+        }
+        jenkinsSharedLibPlugin {
             id = 'com.blackbuild.jenkins.shared-lib'
             displayName = 'jenkins-shared-lib-plugin'
             description = 'Plugin to help running real unit test for Jenkins Groovy Libs (formally Shared Groovy Libs)'
-            implementationClass = 'com.blackbuild.groovycps.jenkins.SharedLibPlugin'
+            implementationClass = 'com.blackbuild.groovycps.sharedlib.JenkinsSharedLibPlugin'
         }
     }
 }
@@ -85,7 +91,10 @@ publishing {
         publications.groovyCpsPluginPluginMarkerMaven.pom { pom ->
             rootProject.configurePom(pom)
         }
-        publications.jenkinsShareLibPluginPluginMarkerMaven.pom { pom ->
+        publications.jenkinsDependenciesPluginPluginMarkerMaven.pom { pom ->
+            rootProject.configurePom(pom)
+        }
+        publications.jenkinsSharedLibPluginPluginMarkerMaven.pom { pom ->
             rootProject.configurePom(pom)
         }
     }

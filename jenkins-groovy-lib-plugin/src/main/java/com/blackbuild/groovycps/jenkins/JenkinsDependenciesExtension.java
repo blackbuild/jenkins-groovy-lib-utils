@@ -24,25 +24,26 @@
 package com.blackbuild.groovycps.jenkins;
 
 import org.gradle.api.Project;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 
 @SuppressWarnings("unused")
-public abstract class SharedLibExtension {
+public abstract class JenkinsDependenciesExtension {
 
     public static final String DEFAULT_PLUGIN_VERSIONS = "plugins/versions.properties";
     public static final String DEFAULT_PLUGIN_MAPPINGS = "plugins/mapping.properties";
     public static final String DEFAULT_JENKINS_UPDATE_CENTER = "https://updates.jenkins.io/current/update-center.json";
 
-    public SharedLibExtension(Project project) {
+    public JenkinsDependenciesExtension(Project project) {
         getJenkinsVersion().convention("2.375.1");
         getPluginVersionsFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_VERSIONS));
         getPluginMappingFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_MAPPINGS));
         getUpdateCenterUrl().convention(DEFAULT_JENKINS_UPDATE_CENTER);
         getAddJenkinsRepository().convention(true);
-        getAddTestBaseDependency().convention(true);
+        getPluginDirectory().convention(project.getLayout().getBuildDirectory().dir("resources/test/")); // TODO get from source set
     }
 
     public abstract Property<String> getJenkinsVersion();
@@ -68,13 +69,11 @@ public abstract class SharedLibExtension {
 
     public abstract Property<Boolean> getAddTestBaseDependency();
 
-    public void doNotAddTestBaseDependency() {
-        getAddTestBaseDependency().set(false);
-    }
-
     public void doNotAddJenkinsRepository() {
         getAddJenkinsRepository().set(false);
     }
+
+    public abstract DirectoryProperty getPluginDirectory();
 
 
 }

@@ -37,7 +37,9 @@ import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolutionStrategy;
 import org.gradle.api.artifacts.ResolvedArtifact;
+import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.GroovySourceDirectorySet;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -48,6 +50,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.blackbuild.groovycps.helpers.MappingUtil.loadPropertiesFromFile;
 import static com.blackbuild.groovycps.helpers.MappingUtil.mapToProperties;
@@ -57,17 +60,16 @@ import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 
 @SuppressWarnings("unused")
-public class SharedLibPlugin implements Plugin<Project> {
+public class JenkinsDependenciesPlugin implements Plugin<Project> {
 
     public static final String DEFAULT_JENKINS_REPO = "https://repo.jenkins-ci.org/public/";
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private Project project;
-    private SharedLibExtension extension;
+    private JenkinsDependenciesExtension extension;
     private Configuration jenkinsCore;
     private Configuration jenkinsPlugins;
     private Map<String, String> pluginMapping;
-
     private Map<String, String> pluginVersions;
     private final Map<String, String> explicitPluginVersions = new HashMap<>();
 
@@ -80,23 +82,16 @@ public class SharedLibPlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
         this.project = project;
-        project.getPluginManager().apply(GroovyCpsPlugin.class);
-        extension = project.getExtensions().create("jenkins", SharedLibExtension.class, project);
+        project.getPluginManager().apply(GroovyPlugin.class);
+        extension = project.getExtensions().create("jenkins", JenkinsDependenciesExtension.class, project);
 
-        addJenkinsRepository();
-        addTestBase();
-        configureSourceSets();
-        createJenkinsConfigurations();
-        addJenkinsCoreDependency();
+        project.afterEvaluate( p -> {
+            addJenkinsRepository();
+            createJenkinsConfigurations();
+            addJenkinsCoreDependency();
+        });
 
         createHelperTasks();
-    }
-
-    private void addTestBase() {
-        if (extension.getAddTestBaseDependency().get())
-            project.getDependencies().add(
-                    "testImplementation",
-                    project.getDependencies().create("com.blackbuild.groovycps:jenkins-test-base:" + PluginHelper.getOwnVersion()));
     }
 
     private void addJenkinsRepository() {
@@ -117,11 +112,18 @@ public class SharedLibPlugin implements Plugin<Project> {
             t.getInstalledPluginsUrl().set(extension.getInstalledPluginsUrl());
             t.getPluginVersionsFile().set(extension.getPluginVersionsFile());
         });
+        project.getTasks().register("copyJenkinsPlugins", Copy.class, t -> {
+            t.setDescription("Copies all jenkins plugins into target directory");
+            t.setGroup("build");
+            t.from(jenkinsPlugins);
+            t.into(extension.getPluginDirectory());
+            t.include("*.hpi", "*.jpi");
+        });
     }
 
     private void createJenkinsConfigurations() {
-        jenkinsCore = project.getConfigurations().create("jenkinsCore", SharedLibPlugin::configureConfiguration);
-        jenkinsPlugins = project.getConfigurations().create("jenkinsPlugins", SharedLibPlugin::configureConfiguration);
+        jenkinsCore = project.getConfigurations().create("jenkinsCore", JenkinsDependenciesPlugin::configureConfiguration);
+        jenkinsPlugins = project.getConfigurations().create("jenkinsPlugins", JenkinsDependenciesPlugin::configureConfiguration);
         jenkinsPlugins.extendsFrom(jenkinsCore);
         jenkinsPlugins.withDependencies(this::resolvePlugins);
         jenkinsPlugins.resolutionStrategy(this::resolvePluginVersions);
@@ -137,7 +139,7 @@ public class SharedLibPlugin implements Plugin<Project> {
         ModuleVersionIdentifier moduleVersion = dep.getModuleVersion().getId();
         String dependencyString = format("%s:%s:%s", moduleVersion.getGroup(), moduleVersion.getName(), moduleVersion.getVersion());
 
-        if ("hpi".equals(dep.getExtension()))
+        if ("hpi".equals(dep.getExtension()) || "jpi".equals(dep.getExtension()))
             dependencies.add(project.getDependencies().create(dependencyString + "@jar"));
         dependencies.add(project.getDependencies().create(dependencyString));
     }
@@ -234,17 +236,6 @@ public class SharedLibPlugin implements Plugin<Project> {
     }
 
     @SuppressWarnings({"UnstableApiUsage", "DataFlowIssue"})
-    private void configureSourceSets() {
-        SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
-        SourceSet main = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-        main.getExtensions().findByType(GroovySourceDirectorySet.class).setSrcDirs(asList("src", "vars", "jenkins"));
-        main.getResources().setSrcDirs(asList("gdsl", "resources"));
-
-        SourceSet test = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
-        test.getExtensions().findByType(GroovySourceDirectorySet.class).setSrcDirs(singletonList("test"));
-        test.getResources().setSrcDirs(singletonList("testResources"));
-    }
-
     private void addJenkinsCoreDependency() {
         jenkinsCore.defaultDependencies(d -> {
             Provider<String> coordinates = extension.getJenkinsVersion().map(it -> "org.jenkins-ci.main:jenkins-core:" + it);

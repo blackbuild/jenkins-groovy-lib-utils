@@ -23,12 +23,13 @@
  */
 package com.blackbuild.groovycps.jenkins
 
+
 import com.blackbuild.groovycps.tests.GradleIntegrationTest
 import org.intellij.lang.annotations.Language
 
-class SharedLibPluginTest extends GradleIntegrationTest {
+class JenkinsDependenciesPluginTest extends GradleIntegrationTest {
 
-    String pluginIdToTest = "com.blackbuild.jenkins.shared-lib"
+    String pluginIdToTest = "com.blackbuild.jenkins.dependencies"
 
     File pluginMapping
     File versionMapping
@@ -36,24 +37,8 @@ class SharedLibPluginTest extends GradleIntegrationTest {
     @Override
     def setup() {
         new File(testProjectDir, "plugins").mkdirs()
-        pluginMapping = new File(testProjectDir, SharedLibExtension.DEFAULT_PLUGIN_MAPPINGS)
-        versionMapping = new File(testProjectDir, SharedLibExtension.DEFAULT_PLUGIN_VERSIONS)
-    }
-
-    def "main and test srcDirs are correctly set"() {
-        given:
-        withVerifyTask '''
-            assert project.sourceSets.main.groovy.srcDirs.collect { projectDir.relativePath(it) } == ['src', 'vars', 'jenkins', ]
-            assert project.sourceSets.main.resources.srcDirs.collect { projectDir.relativePath(it) } == ['gdsl','resources']
-            assert project.sourceSets.test.groovy.srcDirs.collect { projectDir.relativePath(it) } == ['test']
-            assert project.sourceSets.test.resources.srcDirs.collect { projectDir.relativePath(it) } == ['testResources']
-        '''
-
-        when:
-        runVerifyTask()
-
-        then:
-        noExceptionThrown()
+        pluginMapping = new File(testProjectDir, JenkinsDependenciesExtension.DEFAULT_PLUGIN_MAPPINGS)
+        versionMapping = new File(testProjectDir, JenkinsDependenciesExtension.DEFAULT_PLUGIN_VERSIONS)
     }
 
     def "plugins can be registered"() {
@@ -238,6 +223,31 @@ blueocean=1.26.0
 
         when:
         runTask("dependencies",  DO_VERIFY_TASK)
+        // runVerifyTask()
+
+        then:
+        noExceptionThrown()
+    }
+
+    def "plugins are copied to target folder"() {
+        given:
+        withDefaultRepositories()
+        withBuild """
+jenkins {
+    doNotAddJenkinsRepository()
+    plugin "blueocean"
+}
+"""
+
+        withPluginMapping '''
+blueocean=io.jenkins.blueocean:blueocean
+'''
+        withVersionMapping '''
+blueocean=1.26.0
+'''
+
+        when:
+        runTask("copyJenkinsPlugins", "--stacktrace")
         // runVerifyTask()
 
         then:

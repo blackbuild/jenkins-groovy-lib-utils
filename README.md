@@ -13,7 +13,7 @@ It consists of three elements:
 
 ```groovy
 plugins {
-    id "com.blackbuild.jenkins.shared-lib" version "0.1.0-rc.1"
+    id "com.blackbuild.jenkins.shared-lib" version "0.1.0-rc.4"
 }
 
 // Java 1.8 prevents ugly warnings in build
