@@ -23,26 +23,13 @@
  */
 package com.blackbuild.groovycps.jenkins;
 
-import com.blackbuild.groovycps.helpers.PluginHelper;
-import com.blackbuild.groovycps.plugin.GroovyCpsPlugin;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.DependencyResolveDetails;
-import org.gradle.api.artifacts.DependencySet;
-import org.gradle.api.artifacts.ExternalDependency;
-import org.gradle.api.artifacts.ModuleDependency;
-import org.gradle.api.artifacts.ModuleVersionIdentifier;
-import org.gradle.api.artifacts.ResolutionStrategy;
-import org.gradle.api.artifacts.ResolvedArtifact;
+import org.gradle.api.artifacts.*;
 import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
-import org.gradle.api.tasks.GroovySourceDirectorySet;
-import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.SourceSetContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,13 +37,10 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static com.blackbuild.groovycps.helpers.MappingUtil.loadPropertiesFromFile;
 import static com.blackbuild.groovycps.helpers.MappingUtil.mapToProperties;
 import static java.lang.String.format;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
 
 @SuppressWarnings("unused")
@@ -128,7 +112,8 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
         jenkinsPlugins.withDependencies(this::resolvePlugins);
         jenkinsPlugins.resolutionStrategy(this::resolvePluginVersions);
         project.getConfigurations().getByName("implementation").withDependencies(this::addPluginJarsToConfiguration);
-        project.getConfigurations().all(config -> config.exclude(singletonMap("group", "commons-discovery")));
+        // known problem with resoution, mvn central has timestamp versions deployed as releases
+        project.getConfigurations().all(config -> config.getResolutionStrategy().force("commons-discovery:commons-discovery:0.5"));
     }
 
     private void addPluginJarsToConfiguration(DependencySet dependencies) {
