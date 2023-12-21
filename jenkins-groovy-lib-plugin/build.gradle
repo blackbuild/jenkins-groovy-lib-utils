@@ -60,8 +60,11 @@ pluginBundle {
     tags = ['testing', 'groovy', 'cps', 'jenkins']
 }
 
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(11))
+    }
+}
 
 jacoco {
     toolVersion = "0.8.2"
