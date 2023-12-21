@@ -122,8 +122,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             t.into(extension.getPluginDirectory());
             t.include("*.hpi", "*.jpi");
             t.rename(name -> pluginIdToVersions.get(name));
-            // t.getOutputs().file(extension.getIndexFile());
-            t.getOutputs().file(extension.getPluginDirectory());
+            t.getOutputs().dir(extension.getPluginDirectory());
             t.doLast(new CreateIndexFile());
         });
     }
@@ -296,6 +295,5 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             task.dependsOn("copyJenkinsPlugins");
             task.getInputs().dir(extension.getPluginDirectory());
         });
-
     }
 }

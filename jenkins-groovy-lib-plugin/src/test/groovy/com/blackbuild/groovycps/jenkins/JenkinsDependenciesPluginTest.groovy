@@ -258,7 +258,6 @@ jenkins {
 
     def "test harness is added"() {
         given:
-        def pluginDir = new File(testProjectDir, "build/jenkins-plugins/test-dependencies")
         withDefaultRepositories()
         withBuild """
 jenkins {
@@ -300,6 +299,34 @@ class MyTest extends Specification {
         then:
         noExceptionThrown()
         result.task(":copyJenkinsPlugins").outcome == TaskOutcome.SUCCESS
+    }
+
+    def "BUG: fails on exisiting plugin folder"() {
+        given:
+        withDefaultRepositories()
+        withBuild """
+jenkins {
+    doNotAddJenkinsRepository()
+    plugin "job-dsl"
+}
+"""
+        withPlugins([
+                "org.jenkins-ci.plugins:job-dsl:1.77",
+                "org.jenkins-ci.plugins:structs:1.19",
+                "org.jenkins-ci.plugins:script-security:1.54"
+        ])
+
+        when:
+        runTask("copyJenkinsPlugins")
+
+        then:
+        noExceptionThrown()
+
+        when:
+        runTask("copyJenkinsPlugins")
+
+        then:
+        noExceptionThrown()
     }
 
     def withPluginMapping(@Language("Properties") String content) {
