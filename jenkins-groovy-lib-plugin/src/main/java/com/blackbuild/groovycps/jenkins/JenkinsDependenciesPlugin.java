@@ -23,9 +23,7 @@
  */
 package com.blackbuild.groovycps.jenkins;
 
-import org.gradle.api.GradleException;
-import org.gradle.api.Plugin;
-import org.gradle.api.Project;
+import org.gradle.api.*;
 import org.gradle.api.artifacts.*;
 import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.provider.Provider;
@@ -33,7 +31,9 @@ import org.gradle.api.tasks.Copy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,6 +42,7 @@ import static com.blackbuild.groovycps.helpers.MappingUtil.loadPropertiesFromFil
 import static com.blackbuild.groovycps.helpers.MappingUtil.mapToProperties;
 import static java.lang.String.format;
 import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toMap;
 
 @SuppressWarnings("unused")
 public class JenkinsDependenciesPlugin implements Plugin<Project> {
@@ -55,6 +56,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
     private Configuration jenkinsPlugins;
     private Map<String, String> pluginMapping;
     private Map<String, String> pluginVersions;
+    private Map<String, String> pluginIdToVersions;
     private final Map<String, String> explicitPluginVersions = new HashMap<>();
 
     private static void configureConfiguration(Configuration c) {
@@ -79,7 +81,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
     }
 
     private void addJenkinsRepository() {
-        if (extension.getAddJenkinsRepository().get())
+        if (Boolean.TRUE.equals(extension.getAddJenkinsRepository().get()))
             project.getRepositories().maven(m -> m.setUrl(DEFAULT_JENKINS_REPO));
     }
 
@@ -102,7 +104,23 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             t.from(jenkinsPlugins);
             t.into(extension.getPluginDirectory());
             t.include("*.hpi", "*.jpi");
+            t.rename(name -> pluginIdToVersions.get(name));
+            t.getOutputs().file(extension.getPluginDirectory().file("index"));
+            t.doLast(new CreateIndexFile());
         });
+    }
+
+    // can not be a lambda because of https://docs.gradle.org/7.6/userguide/validation_problems.html#implementation_unknown
+    class CreateIndexFile implements Action<Task> {
+        @Override
+        public void execute(Task task) {
+            File indexFile = extension.getPluginDirectory().file("index").get().getAsFile();
+            try (PrintWriter writer = new PrintWriter(indexFile)) {
+                pluginIdToVersions.values().forEach(writer::println);
+            } catch (IOException e) {
+                throw new GradleException("Could not write index file", e);
+            }
+        }
     }
 
     private void createJenkinsConfigurations() {
@@ -114,6 +132,17 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
         project.getConfigurations().getByName("implementation").withDependencies(this::addPluginJarsToConfiguration);
         // known problem with resoution, mvn central has timestamp versions deployed as releases
         project.getConfigurations().all(config -> config.getResolutionStrategy().force("commons-discovery:commons-discovery:0.5"));
+        jenkinsPlugins.getIncoming().afterResolve(this::resolvePluginIds);
+    }
+
+    private void resolvePluginIds(ResolvableDependencies resolvableDependencies) {
+        logger.info("Resolving plugin ids");
+        pluginIdToVersions =
+        jenkinsPlugins.getResolvedConfiguration().getResolvedArtifacts().stream()
+                .filter(artifact -> "hpi".equals(artifact.getExtension()) || "jpi".equals(artifact.getExtension()))
+                .collect(toMap(
+                        a -> a.getFile().getName(),
+                        a -> String.format("%s.hpi",a.getName())));
     }
 
     private void addPluginJarsToConfiguration(DependencySet dependencies) {
@@ -220,7 +249,6 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
         );
     }
 
-    @SuppressWarnings({"UnstableApiUsage", "DataFlowIssue"})
     private void addJenkinsCoreDependency() {
         jenkinsCore.defaultDependencies(d -> {
             Provider<String> coordinates = extension.getJenkinsVersion().map(it -> "org.jenkins-ci.main:jenkins-core:" + it);

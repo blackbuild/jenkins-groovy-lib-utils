@@ -235,23 +235,24 @@ blueocean=1.26.0
         withBuild """
 jenkins {
     doNotAddJenkinsRepository()
-    plugin "blueocean"
+    plugin "job-dsl"
 }
 """
-
-        withPluginMapping '''
-blueocean=io.jenkins.blueocean:blueocean
-'''
-        withVersionMapping '''
-blueocean=1.26.0
-'''
+        withPlugins([
+                "org.jenkins-ci.plugins:job-dsl:1.77",
+                "org.jenkins-ci.plugins:structs:1.19",
+                "org.jenkins-ci.plugins:script-security:1.54"
+        ])
 
         when:
         runTask("copyJenkinsPlugins", "--stacktrace")
         // runVerifyTask()
+        def pluginDir = new File(testProjectDir, "build/jenkins-plugins/test-dependencies")
 
         then:
-        noExceptionThrown()
+        new File(pluginDir, "index").exists()
+        new File(pluginDir, "index").text.readLines().sort() == ["job-dsl.hpi", "structs.hpi", "script-security.hpi"].sort()
+        pluginDir.list().sort().toList() == ["job-dsl.hpi", "structs.hpi", "script-security.hpi", "index"].sort()
     }
 
     def withPluginMapping(@Language("Properties") String content) {
@@ -259,6 +260,17 @@ blueocean=1.26.0
     }
     def withVersionMapping(@Language("Properties") String content) {
         versionMapping << content
+    }
+
+    def withPlugins(List<String> plugins) {
+        withPluginMapping(plugins
+                .collect { gav -> gav.tokenize(":") }
+                .collect { gav -> "${gav[1]}=${gav[0]}:${gav[1]}" }
+                .join("\n"))
+        withVersionMapping(plugins
+                .collect { gav -> gav.tokenize(":") }
+                .collect { gav -> "${gav[1]}=${gav[2]}" }
+                .join("\n"))
     }
 
     void withDefaultRepositories() {

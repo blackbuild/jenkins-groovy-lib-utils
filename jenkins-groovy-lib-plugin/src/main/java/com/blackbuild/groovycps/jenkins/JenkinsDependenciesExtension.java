@@ -37,13 +37,14 @@ public abstract class JenkinsDependenciesExtension {
     public static final String DEFAULT_PLUGIN_MAPPINGS = "plugins/mapping.properties";
     public static final String DEFAULT_JENKINS_UPDATE_CENTER = "https://updates.jenkins.io/current/update-center.json";
 
+    @SuppressWarnings("java:S5993")
     public JenkinsDependenciesExtension(Project project) {
         getJenkinsVersion().convention("2.375.1");
         getPluginVersionsFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_VERSIONS));
         getPluginMappingFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_MAPPINGS));
         getUpdateCenterUrl().convention(DEFAULT_JENKINS_UPDATE_CENTER);
         getAddJenkinsRepository().convention(true);
-        getPluginDirectory().convention(project.getLayout().getBuildDirectory().dir("resources/test/")); // TODO get from source set
+        getPluginDirectory().convention(project.getLayout().getBuildDirectory().dir("jenkins-plugins/test-dependencies"));
     }
 
     public abstract Property<String> getJenkinsVersion();
@@ -66,8 +67,6 @@ public abstract class JenkinsDependenciesExtension {
     public abstract Property<String> getUpdateCenterUrl();
 
     public abstract Property<Boolean> getAddJenkinsRepository();
-
-    public abstract Property<Boolean> getAddTestBaseDependency();
 
     public void doNotAddJenkinsRepository() {
         getAddJenkinsRepository().set(false);
