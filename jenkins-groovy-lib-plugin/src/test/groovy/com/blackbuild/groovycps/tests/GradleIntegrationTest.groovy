@@ -65,6 +65,12 @@ abstract class GradleIntegrationTest extends Specification {
 """
     }
 
+    void withFile(String filename, @Language("Groovy") String content) {
+        def target = new File(testProjectDir, filename)
+        target.parentFile.mkdirs()
+        target.text = content
+    }
+
     protected BuildResult runTask(String... tasks) {
         return GradleRunner.create()
                 .withProjectDir(testProjectDir)

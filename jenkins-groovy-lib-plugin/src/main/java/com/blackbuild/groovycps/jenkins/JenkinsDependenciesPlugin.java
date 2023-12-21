@@ -28,6 +28,7 @@ import org.gradle.api.artifacts.*;
 import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
+import org.gradle.api.tasks.testing.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +59,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
     private Map<String, String> pluginVersions;
     private Map<String, String> pluginIdToVersions;
     private final Map<String, String> explicitPluginVersions = new HashMap<>();
+    private Configuration jenkinsTestHarness;
 
     private static void configureConfiguration(Configuration c) {
         c.setVisible(false);
@@ -75,6 +77,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             addJenkinsRepository();
             createJenkinsConfigurations();
             addJenkinsCoreDependency();
+            addJenkinsTestHarness();
         });
 
         createHelperTasks();
@@ -105,7 +108,8 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             t.into(extension.getPluginDirectory());
             t.include("*.hpi", "*.jpi");
             t.rename(name -> pluginIdToVersions.get(name));
-            t.getOutputs().file(extension.getPluginDirectory().file("index"));
+            // t.getOutputs().file(extension.getIndexFile());
+            t.getOutputs().file(extension.getPluginDirectory());
             t.doLast(new CreateIndexFile());
         });
     }
@@ -114,7 +118,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
     class CreateIndexFile implements Action<Task> {
         @Override
         public void execute(Task task) {
-            File indexFile = extension.getPluginDirectory().file("index").get().getAsFile();
+            File indexFile = extension.getIndexFile().get().getAsFile();
             try (PrintWriter writer = new PrintWriter(indexFile)) {
                 pluginIdToVersions.values().stream().map(l -> l.substring(0, l.length() - 4)).forEach(writer::println);
             } catch (IOException e) {
@@ -257,5 +261,28 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             jenkins.exclude(singletonMap("module", "groovy-all"));
             d.add(jenkins);
         });
+    }
+
+    private void addJenkinsTestHarness() {
+        if (!extension.getUseTestHarness().get()) return;
+        logger.info("Adding Jenkins test harness");
+
+        jenkinsTestHarness = project.getConfigurations().create("jenkinsTestHarness", JenkinsDependenciesPlugin::configureConfiguration);
+        jenkinsTestHarness.extendsFrom(jenkinsCore);
+        project.getConfigurations().getByName("testImplementation").extendsFrom(jenkinsTestHarness);
+        jenkinsTestHarness.defaultDependencies(d -> {
+            Provider<String> coordinates = extension.getJenkinsTestHarnessVersion().map("org.jenkins-ci.main:jenkins-test-harness:"::concat);
+            ModuleDependency testHarness = (ModuleDependency) project.getDependencies().create(coordinates.get());
+            testHarness.exclude(singletonMap("module", "groovy"));
+            testHarness.exclude(singletonMap("module", "groovy-all"));
+            d.add(testHarness);
+        });
+
+        project.getDependencies().add("testRuntimeOnly", project.files(extension.getPluginDirectory().dir("..")));
+        project.getTasks().withType(Test.class).all(task -> {
+            task.dependsOn("copyJenkinsPlugins");
+            task.getInputs().dir(extension.getPluginDirectory());
+        });
+
     }
 }
