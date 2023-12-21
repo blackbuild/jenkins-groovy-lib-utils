@@ -25,6 +25,8 @@ package com.blackbuild.groovycps.jenkins
 
 
 import com.blackbuild.groovycps.tests.GradleIntegrationTest
+import org.gradle.testkit.runner.BuildResult
+import org.gradle.testkit.runner.TaskOutcome
 import org.intellij.lang.annotations.Language
 
 class JenkinsDependenciesPluginTest extends GradleIntegrationTest {
@@ -231,6 +233,7 @@ blueocean=1.26.0
 
     def "plugins are copied to target folder"() {
         given:
+        def pluginDir = new File(testProjectDir, "build/jenkins-plugins/test-dependencies")
         withDefaultRepositories()
         withBuild """
 jenkins {
@@ -246,13 +249,57 @@ jenkins {
 
         when:
         runTask("copyJenkinsPlugins", "--stacktrace")
-        // runVerifyTask()
-        def pluginDir = new File(testProjectDir, "build/jenkins-plugins/test-dependencies")
 
         then:
         new File(pluginDir, "index").exists()
-        new File(pluginDir, "index").text.readLines().sort() == ["job-dsl.hpi", "structs.hpi", "script-security.hpi"].sort()
+        new File(pluginDir, "index").text.readLines().sort() == ["job-dsl", "structs", "script-security"].sort()
         pluginDir.list().sort().toList() == ["job-dsl.hpi", "structs.hpi", "script-security.hpi", "index"].sort()
+    }
+
+    def "test harness is added"() {
+        given:
+        def pluginDir = new File(testProjectDir, "build/jenkins-plugins/test-dependencies")
+        withDefaultRepositories()
+        withBuild """
+jenkins {
+    useTestHarness()
+    plugin "job-dsl"
+}
+
+dependencies {
+    testImplementation 'org.spockframework:spock-core:1.3-groovy-2.4'
+}
+"""
+        withPlugins([
+                "org.jenkins-ci.plugins:job-dsl:1.77",
+                "org.jenkins-ci.plugins:structs:1.19",
+                "org.jenkins-ci.plugins:script-security:1.54"
+        ])
+
+        withFile "src/test/groovy/MyTest.groovy",   '''
+import spock.lang.Specification
+class MyTest extends Specification {
+
+    def 'my test'() {
+        expect:
+        true
+    }
+}
+'''
+
+
+        withVerifyTask '''
+        assert project.configurations.jenkinsCore.dependencies.matching { it.name == "jenkins-core" && it.version == "2.375.1" }
+        assert project.configurations.jenkinsTestHarness.dependencies.matching { it.name == "jenkins-test-harness" && it.version == "2129.v09f309d2339c" }
+        assert project.configurations.testRuntimeClasspath.resolve().contains(project.layout.buildDirectory.dir("jenkins-plugins").get().asFile)
+'''
+
+        when:
+        def result = runTask("test", DO_VERIFY_TASK)
+
+        then:
+        noExceptionThrown()
+        result.task(":copyJenkinsPlugins").outcome == TaskOutcome.SUCCESS
     }
 
     def withPluginMapping(@Language("Properties") String content) {

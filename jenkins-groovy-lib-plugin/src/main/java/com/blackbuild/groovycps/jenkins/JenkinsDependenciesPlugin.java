@@ -28,6 +28,7 @@ import org.gradle.api.artifacts.*;
 import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
+import org.gradle.api.tasks.testing.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,9 +76,25 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             addJenkinsRepository();
             createJenkinsConfigurations();
             addJenkinsCoreDependency();
+            addJenkinsTestHarness();
+            fixCommonDependencyIssues();
         });
 
         createHelperTasks();
+    }
+
+    private void fixCommonDependencyIssues() {
+        // known problem with resolution, mvn central has timestamp versions deployed as releases
+        project.getConfigurations().all(c -> c.getResolutionStrategy()
+                .dependencySubstitution(ds -> {
+                    ds.substitute(ds.module("org.connectbot.jbcrypt:jbcrypt:1.0.0"))
+                            .using(ds.module("org.connectbot:jbcrypt:1.0.2"))
+                            .because("jbcrypt:1.0.0 has been pulled back");
+                    ds.substitute(ds.module("commons-discovery:commons-discovery"))
+                            .using(ds.module("commons-discovery:commons-discovery:0.5"))
+                            .because("mismatched version in maven central");
+                })
+        );
     }
 
     private void addJenkinsRepository() {
@@ -105,18 +122,20 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             t.into(extension.getPluginDirectory());
             t.include("*.hpi", "*.jpi");
             t.rename(name -> pluginIdToVersions.get(name));
-            t.getOutputs().file(extension.getPluginDirectory().file("index"));
+            // t.getOutputs().file(extension.getIndexFile());
+            t.getOutputs().file(extension.getPluginDirectory());
             t.doLast(new CreateIndexFile());
         });
     }
 
     // can not be a lambda because of https://docs.gradle.org/7.6/userguide/validation_problems.html#implementation_unknown
+    @NonNullApi
     class CreateIndexFile implements Action<Task> {
         @Override
         public void execute(Task task) {
-            File indexFile = extension.getPluginDirectory().file("index").get().getAsFile();
+            File indexFile = extension.getIndexFile().get().getAsFile();
             try (PrintWriter writer = new PrintWriter(indexFile)) {
-                pluginIdToVersions.values().forEach(writer::println);
+                pluginIdToVersions.values().stream().map(l -> l.substring(0, l.length() - 4)).forEach(writer::println);
             } catch (IOException e) {
                 throw new GradleException("Could not write index file", e);
             }
@@ -130,8 +149,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
         jenkinsPlugins.withDependencies(this::resolvePlugins);
         jenkinsPlugins.resolutionStrategy(this::resolvePluginVersions);
         project.getConfigurations().getByName("implementation").withDependencies(this::addPluginJarsToConfiguration);
-        // known problem with resoution, mvn central has timestamp versions deployed as releases
-        project.getConfigurations().all(config -> config.getResolutionStrategy().force("commons-discovery:commons-discovery:0.5"));
+
         jenkinsPlugins.getIncoming().afterResolve(this::resolvePluginIds);
     }
 
@@ -257,5 +275,27 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             jenkins.exclude(singletonMap("module", "groovy-all"));
             d.add(jenkins);
         });
+    }
+
+    private void addJenkinsTestHarness() {
+        if (!extension.getUseTestHarness().get()) return;
+        logger.info("Adding Jenkins test harness");
+
+        Configuration jenkinsTestHarness = project.getConfigurations().create("jenkinsTestHarness", JenkinsDependenciesPlugin::configureConfiguration);
+        jenkinsTestHarness.extendsFrom(jenkinsCore);
+        project.getConfigurations().getByName("testImplementation").extendsFrom(jenkinsTestHarness);
+        jenkinsTestHarness.defaultDependencies(d -> {
+            Provider<String> coordinates = extension.getJenkinsTestHarnessVersion().map("org.jenkins-ci.main:jenkins-test-harness:"::concat);
+            ModuleDependency testHarness = (ModuleDependency) project.getDependencies().create(coordinates.get());
+            testHarness.exclude(singletonMap("module", "groovy"));
+            testHarness.exclude(singletonMap("module", "groovy-all"));
+            d.add(testHarness);
+        });
+        project.getDependencies().add("testRuntimeOnly", project.files(extension.getPluginDirectory().dir("..")));
+        project.getTasks().withType(Test.class).all(task -> {
+            task.dependsOn("copyJenkinsPlugins");
+            task.getInputs().dir(extension.getPluginDirectory());
+        });
+
     }
 }
