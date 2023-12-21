@@ -116,7 +116,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
         public void execute(Task task) {
             File indexFile = extension.getPluginDirectory().file("index").get().getAsFile();
             try (PrintWriter writer = new PrintWriter(indexFile)) {
-                pluginIdToVersions.values().forEach(writer::println);
+                pluginIdToVersions.values().stream().map(l -> l.substring(0, l.length() - 4)).forEach(writer::println);
             } catch (IOException e) {
                 throw new GradleException("Could not write index file", e);
             }

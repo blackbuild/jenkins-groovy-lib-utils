@@ -251,7 +251,7 @@ jenkins {
 
         then:
         new File(pluginDir, "index").exists()
-        new File(pluginDir, "index").text.readLines().sort() == ["job-dsl.hpi", "structs.hpi", "script-security.hpi"].sort()
+        new File(pluginDir, "index").text.readLines().sort() == ["job-dsl", "structs", "script-security"].sort()
         pluginDir.list().sort().toList() == ["job-dsl.hpi", "structs.hpi", "script-security.hpi", "index"].sort()
     }
 
