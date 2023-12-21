@@ -25,6 +25,7 @@ package com.blackbuild.groovycps.jenkins;
 
 import org.gradle.api.Project;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
@@ -36,18 +37,23 @@ public abstract class JenkinsDependenciesExtension {
     public static final String DEFAULT_PLUGIN_VERSIONS = "plugins/versions.properties";
     public static final String DEFAULT_PLUGIN_MAPPINGS = "plugins/mapping.properties";
     public static final String DEFAULT_JENKINS_UPDATE_CENTER = "https://updates.jenkins.io/current/update-center.json";
+    public static final String DEFAULT_JENKINS_VERSION = "2.375.1";
+    public static final String DEFAULT_TEST_HARNESS_VERSION = "2129.v09f309d2339c";
 
     @SuppressWarnings("java:S5993")
     public JenkinsDependenciesExtension(Project project) {
-        getJenkinsVersion().convention("2.375.1");
+        getJenkinsVersion().convention(DEFAULT_JENKINS_VERSION);
+        getJenkinsTestHarnessVersion().convention(DEFAULT_TEST_HARNESS_VERSION);
         getPluginVersionsFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_VERSIONS));
         getPluginMappingFile().convention(project.getLayout().getProjectDirectory().file(DEFAULT_PLUGIN_MAPPINGS));
         getUpdateCenterUrl().convention(DEFAULT_JENKINS_UPDATE_CENTER);
         getAddJenkinsRepository().convention(true);
+        getUseTestHarness().convention(false);
         getPluginDirectory().convention(project.getLayout().getBuildDirectory().dir("jenkins-plugins/test-dependencies"));
     }
 
     public abstract Property<String> getJenkinsVersion();
+    public abstract Property<String> getJenkinsTestHarnessVersion();
 
     public abstract ListProperty<String> getPlugins();
 
@@ -68,11 +74,19 @@ public abstract class JenkinsDependenciesExtension {
 
     public abstract Property<Boolean> getAddJenkinsRepository();
 
+    public abstract Property<Boolean> getUseTestHarness();
+
+    public void useTestHarness() {
+        getUseTestHarness().set(true);
+    }
+
     public void doNotAddJenkinsRepository() {
         getAddJenkinsRepository().set(false);
     }
 
     public abstract DirectoryProperty getPluginDirectory();
 
-
+    public Provider<RegularFile> getIndexFile() {
+        return getPluginDirectory().file("index");
+    }
 }
