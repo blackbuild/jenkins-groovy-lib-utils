@@ -59,7 +59,6 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
     private Map<String, String> pluginVersions;
     private Map<String, String> pluginIdToVersions;
     private final Map<String, String> explicitPluginVersions = new HashMap<>();
-    private Configuration jenkinsTestHarness;
 
     private static void configureConfiguration(Configuration c) {
         c.setVisible(false);
@@ -78,9 +77,24 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             createJenkinsConfigurations();
             addJenkinsCoreDependency();
             addJenkinsTestHarness();
+            fixCommonDependencyIssues();
         });
 
         createHelperTasks();
+    }
+
+    private void fixCommonDependencyIssues() {
+        // known problem with resolution, mvn central has timestamp versions deployed as releases
+        project.getConfigurations().all(c -> c.getResolutionStrategy()
+                .dependencySubstitution(ds -> {
+                    ds.substitute(ds.module("org.connectbot.jbcrypt:jbcrypt:1.0.0"))
+                            .using(ds.module("org.connectbot:jbcrypt:1.0.2"))
+                            .because("jbcrypt:1.0.0 has been pulled back");
+                    ds.substitute(ds.module("commons-discovery:commons-discovery"))
+                            .using(ds.module("commons-discovery:commons-discovery:0.5"))
+                            .because("mismatched version in maven central");
+                })
+        );
     }
 
     private void addJenkinsRepository() {
@@ -115,6 +129,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
     }
 
     // can not be a lambda because of https://docs.gradle.org/7.6/userguide/validation_problems.html#implementation_unknown
+    @NonNullApi
     class CreateIndexFile implements Action<Task> {
         @Override
         public void execute(Task task) {
@@ -134,8 +149,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
         jenkinsPlugins.withDependencies(this::resolvePlugins);
         jenkinsPlugins.resolutionStrategy(this::resolvePluginVersions);
         project.getConfigurations().getByName("implementation").withDependencies(this::addPluginJarsToConfiguration);
-        // known problem with resoution, mvn central has timestamp versions deployed as releases
-        project.getConfigurations().all(config -> config.getResolutionStrategy().force("commons-discovery:commons-discovery:0.5"));
+
         jenkinsPlugins.getIncoming().afterResolve(this::resolvePluginIds);
     }
 
@@ -267,7 +281,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
         if (!extension.getUseTestHarness().get()) return;
         logger.info("Adding Jenkins test harness");
 
-        jenkinsTestHarness = project.getConfigurations().create("jenkinsTestHarness", JenkinsDependenciesPlugin::configureConfiguration);
+        Configuration jenkinsTestHarness = project.getConfigurations().create("jenkinsTestHarness", JenkinsDependenciesPlugin::configureConfiguration);
         jenkinsTestHarness.extendsFrom(jenkinsCore);
         project.getConfigurations().getByName("testImplementation").extendsFrom(jenkinsTestHarness);
         jenkinsTestHarness.defaultDependencies(d -> {
@@ -277,7 +291,6 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             testHarness.exclude(singletonMap("module", "groovy-all"));
             d.add(testHarness);
         });
-
         project.getDependencies().add("testRuntimeOnly", project.files(extension.getPluginDirectory().dir("..")));
         project.getTasks().withType(Test.class).all(task -> {
             task.dependsOn("copyJenkinsPlugins");
