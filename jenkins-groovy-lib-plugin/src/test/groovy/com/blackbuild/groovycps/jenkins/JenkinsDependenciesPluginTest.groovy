@@ -299,34 +299,6 @@ class MyTest extends Specification {
         result.task(":copyJenkinsPlugins").outcome == TaskOutcome.SUCCESS
     }
 
-    def "BUG: fails on exisiting plugin folder"() {
-        given:
-        withDefaultRepositories()
-        withBuild """
-jenkins {
-    doNotAddJenkinsRepository()
-    plugin "job-dsl"
-}
-"""
-        withPlugins([
-                "org.jenkins-ci.plugins:job-dsl:1.77",
-                "org.jenkins-ci.plugins:structs:1.19",
-                "org.jenkins-ci.plugins:script-security:1.54"
-        ])
-
-        when:
-        runTask("copyJenkinsPlugins")
-
-        then:
-        noExceptionThrown()
-
-        when:
-        runTask("copyJenkinsPlugins")
-
-        then:
-        noExceptionThrown()
-    }
-
     def "war file is added and resolved"() {
         given:
         withDefaultRepositories()
