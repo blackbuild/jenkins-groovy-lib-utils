@@ -59,6 +59,7 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
     private Map<String, String> pluginVersions;
     private Map<String, String> pluginIdToVersions;
     private final Map<String, String> explicitPluginVersions = new HashMap<>();
+    private Configuration jenkinsWar;
 
     private static void configureConfiguration(Configuration c) {
         c.setVisible(false);
@@ -123,22 +124,18 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             t.include("*.hpi", "*.jpi");
             t.rename(name -> pluginIdToVersions.get(name));
             t.getOutputs().dir(extension.getPluginDirectory());
-            t.doLast(new CreateIndexFile());
+            //noinspection Convert2Lambda,NullableProblems -> Gradle does not allow lambdas for task actions (https://docs.gradle.org/7.6/userguide/validation_problems.html#implementation_unknown)
+            t.doLast(new Action<>() {
+                public void execute(Task task) {
+                    File indexFile = extension.getIndexFile().get().getAsFile();
+                    try (PrintWriter writer = new PrintWriter(indexFile)) {
+                        pluginIdToVersions.values().stream().map(l -> l.substring(0, l.length() - 4)).forEach(writer::println);
+                    } catch (IOException e) {
+                        throw new GradleException("Could not write index file", e);
+                    }
+                }
+            });
         });
-    }
-
-    // can not be a lambda because of https://docs.gradle.org/7.6/userguide/validation_problems.html#implementation_unknown
-    @NonNullApi
-    class CreateIndexFile implements Action<Task> {
-        @Override
-        public void execute(Task task) {
-            File indexFile = extension.getIndexFile().get().getAsFile();
-            try (PrintWriter writer = new PrintWriter(indexFile)) {
-                pluginIdToVersions.values().stream().map(l -> l.substring(0, l.length() - 4)).forEach(writer::println);
-            } catch (IOException e) {
-                throw new GradleException("Could not write index file", e);
-            }
-        }
     }
 
     private void createJenkinsConfigurations() {
@@ -291,9 +288,26 @@ public class JenkinsDependenciesPlugin implements Plugin<Project> {
             d.add(testHarness);
         });
         project.getDependencies().add("testRuntimeOnly", project.files(extension.getPluginDirectory().dir("..")));
+        jenkinsWar = project.getConfigurations().create("jenkinsWar", JenkinsDependenciesPlugin::configureConfiguration);
+        jenkinsWar.setTransitive(false);
+
+        jenkinsWar.defaultDependencies(d -> {
+            Provider<String> coordinates = extension.getJenkinsVersion().map(it -> "org.jenkins-ci.main:jenkins-war:" + it + "@war");
+            d.add(project.getDependencies().create(coordinates.get()));
+        });
         project.getTasks().withType(Test.class).all(task -> {
             task.dependsOn("copyJenkinsPlugins");
             task.getInputs().dir(extension.getPluginDirectory());
+            task.getInputs().files(jenkinsWar);
+            task.systemProperty("buildDirectory", project.getLayout().getBuildDirectory().getAsFile().get().getAbsolutePath());
+
+            //noinspection Convert2Lambda,NullableProblems -> Gradle does not allow lambdas for task actions
+            task.doFirst(new Action<>() {
+                @Override
+                public void execute(Task task) {
+                    ((Test) task).systemProperty("jth.jenkins-war.path", jenkinsWar.getSingleFile().getAbsolutePath());
+                }
+            });
         });
     }
 }

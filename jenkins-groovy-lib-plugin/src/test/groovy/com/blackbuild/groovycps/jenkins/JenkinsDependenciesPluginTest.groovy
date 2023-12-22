@@ -23,9 +23,7 @@
  */
 package com.blackbuild.groovycps.jenkins
 
-
 import com.blackbuild.groovycps.tests.GradleIntegrationTest
-import org.gradle.testkit.runner.BuildResult
 import org.gradle.testkit.runner.TaskOutcome
 import org.intellij.lang.annotations.Language
 
@@ -302,6 +300,87 @@ class MyTest extends Specification {
     }
 
     def "BUG: fails on exisiting plugin folder"() {
+        given:
+        withDefaultRepositories()
+        withBuild """
+jenkins {
+    doNotAddJenkinsRepository()
+    plugin "job-dsl"
+}
+"""
+        withPlugins([
+                "org.jenkins-ci.plugins:job-dsl:1.77",
+                "org.jenkins-ci.plugins:structs:1.19",
+                "org.jenkins-ci.plugins:script-security:1.54"
+        ])
+
+        when:
+        runTask("copyJenkinsPlugins")
+
+        then:
+        noExceptionThrown()
+
+        when:
+        runTask("copyJenkinsPlugins")
+
+        then:
+        noExceptionThrown()
+    }
+
+    def "war file is added and resolved"() {
+        given:
+        withDefaultRepositories()
+        withBuild """
+jenkins {
+    useTestHarness()
+    plugin "job-dsl"
+}
+
+dependencies {
+    testImplementation 'org.spockframework:spock-core:1.3-groovy-2.4'
+}
+"""
+        withPlugins([
+                "org.jenkins-ci.plugins:job-dsl:1.77",
+                "org.jenkins-ci.plugins:structs:1.19",
+                "org.jenkins-ci.plugins:script-security:1.54"
+        ])
+
+        withFile "src/test/groovy/MyTest.groovy",   '''
+import spock.lang.Specification
+class MyTest extends Specification {
+
+    def 'my test'() {
+        expect:
+        System.getProperty("jth.jenkins-war.path")
+        new File(System.getProperty("jth.jenkins-war.path")).exists()
+        System.getProperty("buildDirectory")
+    }
+}
+'''
+
+
+        withVerifyTask '''
+        assert project.configurations.jenkinsWar.state == Configuration.State.RESOLVED
+        def warFiles = project.configurations.jenkinsWar.resolve()
+        assert warFiles.size() == 1
+        assert warFiles.first().name == "jenkins-war-2.375.1.war"
+        assert warFiles.first().isFile()
+        def warSet = project.configurations.jenkinsWar.dependencies.matching { it.name == "jenkins-war" && it.version == "2.375.1" }
+        assert warSet.size() == 1
+        assert project.configurations.testRuntimeClasspath.state == Configuration.State.RESOLVED
+        assert project.configurations.testRuntimeClasspath.resolve().contains(project.layout.buildDirectory.dir("jenkins-plugins").get().asFile)
+'''
+
+        when:
+        def result = runTask("test", DO_VERIFY_TASK, "--stacktrace")
+
+        then:
+        noExceptionThrown()
+        result.task(":copyJenkinsPlugins").outcome == TaskOutcome.SUCCESS
+    }
+
+    def "BUG: fails on existing plugin folder"() {
         given:
         withDefaultRepositories()
         withBuild """
